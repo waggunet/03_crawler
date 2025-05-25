@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단한 웹 크롤러</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 700px; /* 최대 너비 설정 */
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px; /* 입력창과 버튼 사이 간격 */
+        }
+        input[type="text"] {
+            flex-grow: 1; /* 입력창이 남은 공간을 모두 차지하도록 */
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box; /* padding과 border가 width에 포함되도록 */
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled { /* 버튼 비활성화 시 스타일 */
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-bottom: 15px;
+            font-style: italic;
+            color: #555;
+            text-align: center;
+            min-height: 20px; /* 상태 메시지 공간 확보 */
+        }
+        #results {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #fdfdfd;
+            min-height: 100px; /* 최소 높이 설정 */
+            word-break: break-all; /* 긴 텍스트 줄바꿈 */
+        }
+        #results h2 {
+            margin-top: 0;
+            color: #34495e;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        #results ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #results li {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 8px;
+            border-radius: 3px;
+        }
+        #results li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        #results li strong {
+            color: #3498db;
+            display: block; /* 제목과 내용을 분리해서 보여주기 위함 */
+            margin-bottom: 5px;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #fddfdf;
+            border: 1px solid #fbc5c5;
+            border-radius: 4px;
+        }
+
+        /* 로딩 스피너 스타일 */
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto; /* 가운데 정렬 */
+            display: none; /* 기본적으로 숨김 */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>간단한 웹 크롤러</h1>
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="크롤링할 URL을 입력하세요 (예: https://www.example.com)">
+            <button id="crawlButton" onclick="startCrawl()">크롤링 시작</button>
+        </div>
+        <div id="status"></div>
+        <div class="loader" id="loader"></div> <div id="results">
+            <h2>결과:</h2>
+            <p>크롤링할 URL을 입력하고 "크롤링 시작" 버튼을 누르세요.</p>
+        </div>
+    </div>
+
+    <script>
+        // DOM 요소 가져오기
+        const urlInput = document.getElementById('urlInput');
+        const crawlButton = document.getElementById('crawlButton');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const loader = document.getElementById('loader'); // 로더 요소
+
+        // 크롤링 시작 함수
+        async function startCrawl() {
+            const url = urlInput.value.trim(); // 입력값 앞뒤 공백 제거
+
+            // 입력값 유효성 검사
+            if (!url) {
+                resultsDiv.innerHTML = '<h2>결과:</h2><p class="error">URL을 입력해주세요.</p>';
+                return;
+            }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                resultsDiv.innerHTML = '<h2>결과:</h2><p class="error">올바른 URL 형식으로 입력해주세요 (http:// 또는 https:// 로 시작).</p>';
+                return;
+            }
+
+            // 크롤링 시작 시 UI 업데이트
+            statusDiv.textContent = '크롤링 중... 이 작업은 몇 초 정도 걸릴 수 있습니다.';
+            resultsDiv.innerHTML = '<h2>결과:</h2>'; // 이전 결과 초기화
+            crawlButton.disabled = true; // 버튼 비활성화
+            loader.style.display = 'block'; // 로더 보이기
+
+            try {
+                // 백엔드 API(/crawl)에 POST 요청 보내기
+                // 주의: 이 HTML 파일이 Flask 서버와 다른 도메인/포트에서 실행될 경우 CORS 문제가 발생할 수 있습니다.
+                // 로컬에서 app.py를 실행하고 같은 PC의 브라우저에서 이 HTML을 파일로 열면
+                // fetch 요청은 Flask 서버(예: http://127.0.0.1:5000/crawl)로 가야 합니다.
+                // 아래 fetch 주소를 실제 Flask 서버 주소로 맞춰주세요.
+                const response = await fetch('http://127.0.0.1:5000/crawl', { // Flask 서버 주소
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url }), // URL을 JSON 형태로 전송
+                });
+
+                // 응답 상태 확인
+                if (!response.ok) {
+                    // 서버에서 오류 응답이 온 경우 (예: 400, 500 에러)
+                    const errorData = await response.json().catch(() => ({ error: `서버 응답 오류: ${response.status}` }));
+                    throw new Error(errorData.error || `서버 응답 오류: ${response.status}`);
+                }
+
+                const data = await response.json(); // 응답 데이터를 JSON으로 파싱
+
+                // 결과 표시
+                if (data.error) {
+                    resultsDiv.innerHTML = `<h2>결과:</h2><p class="error">오류: ${data.error}</p>`;
+                } else if (data.data && data.data.length > 0) {
+                    let htmlOutput = '<h2>결과:</h2><ul>';
+                    data.data.forEach(item => {
+                        // XSS 방지를 위해 간단한 텍스트 이스케이프 처리
+                        const safeType = escapeHtml(item.type);
+                        const safeContent = escapeHtml(item.content);
+                        htmlOutput += `<li><strong>${safeType}:</strong> ${safeContent}</li>`;
+                    });
+                    htmlOutput += '</ul>';
+                    resultsDiv.innerHTML = htmlOutput;
+                } else {
+                     resultsDiv.innerHTML = '<h2>결과:</h2><p>추출된 정보가 없습니다.</p>';
+                }
+
+            } catch (error) {
+                console.error('크롤링 요청 중 오류 발생:', error);
+                resultsDiv.innerHTML = `<h2>결과:</h2><p class="error">요청 처리 중 오류 발생: ${escapeHtml(error.message)}</p>`;
+            } finally {
+                // 크롤링 종료 시 UI 업데이트
+                statusDiv.textContent = ''; // 상태 메시지 초기화
+                crawlButton.disabled = false; // 버튼 활성화
+                loader.style.display = 'none'; // 로더 숨기기
+            }
+        }
+
+        // 간단한 HTML 이스케이프 함수 (XSS 방지 목적)
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                return unsafe; // 문자열이 아니면 그대로 반환
+            }
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // 엔터 키로 크롤링 시작 기능 추가
+        urlInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // 기본 엔터 동작(폼 제출 등) 방지
+                startCrawl();
+            }
+        });
+
+    </script>
+</body>
+</html>
