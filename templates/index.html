@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹 크롤러 및 시각화 도구</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; line-height: 1.6; background-color: #f4f4f4; color: #333; }
+        .tab-container { width: 100%; }
+        .tab-buttons { overflow: hidden; border-bottom: 1px solid #ccc; background-color: #f1f1f1; }
+        .tab-buttons button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; font-size: 17px; }
+        .tab-buttons button:hover { background-color: #ddd; }
+        .tab-buttons button.active { background-color: #ccc; }
+        .tab-content { display: none; padding: 20px; border-top: none; background-color: #fff; min-height: 400px;}
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom:20px; }
+        h1, h2, h3 { color: #333; text-align: center; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="url"], select {
+            width: calc(100% - 24px); padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;
+        }
+        button {
+            background-color: #5cb85c; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;
+        }
+        button:hover { background-color: #4cae4c; }
+        #resultsArea, #visualizationControls { margin-top: 20px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; }
+        #resultsArea ul { list-style-type: none; padding-left: 0; }
+        #resultsArea li { background-color: #fff; border: 1px solid #ddd; padding: 8px; margin-bottom: 5px; border-radius: 4px; }
+        .message { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .success { background-color: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+        .error { background-color: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
+            width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; margin-left: 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #chartDiv { width: 100%; min-height: 450px; margin-top:20px; border: 1px solid #ddd; border-radius: 4px;}
+        .control-group { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <h1>웹 크롤러 및 시각화 도구 🕸️📊</h1>
+
+    <div class="tab-container">
+        <div class="tab-buttons">
+            <button class="tab-link active" onclick="openTab(event, 'crawlerTab')">웹 크롤러</button>
+            <button class="tab-link" onclick="openTab(event, 'visualizationTab')">데이터 시각화</button>
+        </div>
+
+        <div id="crawlerTab" class="tab-content" style="display: block;">
+            <h2>데이터 수집</h2>
+            <div class="container">
+                <div id="crawlerMessageArea"></div>  <div>
+                    <label for="urlInput">웹사이트 URL:</label>
+                    <input type="url" id="urlInput" placeholder="예: https://www.example.com">
+                </div>
+                <div>
+                    <label for="tagInput">추출할 HTML 태그 또는 CSS 선택자:</label>
+                    <input type="text" id="tagInput" placeholder="예: h2, p, div.content, #main-title, a">
+                </div>
+                <button onclick="startCrawl()">크롤링 시작</button>
+                <div class="spinner" id="crawlLoadingSpinner"></div>
+                <div id="resultsArea" style="display:none;">
+                    <h3>크롤링 결과 (일부):</h3>
+                    <p id="filePathMessage"></p>
+                    <ul id="resultsList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="visualizationTab" class="tab-content">
+            <h2>데이터 시각화</h2>
+            <div class="container">
+                <div id="vizMessageArea"></div> <div id="visualizationControls">
+                    <div class="control-group">
+                        <label for="csvFileSelect">분석할 CSV 파일 선택:</label>
+                        <select id="csvFileSelect"></select>
+                    </div>
+                    <div class="control-group">
+                        <label for="analysisTypeSelect">분석 유형 선택:</label>
+                        <select id="analysisTypeSelect">
+                            <option value="keyword_frequency">키워드 빈도 분석</option>
+                            </select>
+                    </div>
+                    <div id="keywordAnalysisOptions" class="control-group">
+                        <label for="keywordsInput">키워드 입력 (쉼표로 구분):</label>
+                        <input type="text" id="keywordsInput" placeholder="예: 데이터, 분석, 시각화">
+                    </div>
+                    <div class="control-group">
+                        <label for="chartTypeSelect">차트 종류 선택:</label>
+                        <select id="chartTypeSelect">
+                            <option value="bar">막대 그래프</option>
+                            <option value="line">선 그래프</option>
+                            </select>
+                    </div>
+                    <button onclick="generateVisualization()">시각화 생성</button>
+                    <div class="spinner" id="vizLoadingSpinner"></div>
+                </div>
+                <div id="chartDiv">
+                    <p style="text-align:center; padding-top: 50px;">차트가 여기에 표시됩니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Tab 기능 ---
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-link");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+
+            if (tabName === 'visualizationTab') {
+                loadCsvFiles(); // 시각화 탭을 열 때 CSV 파일 목록 로드
+            }
+        }
+
+        // --- 일반 메시지 표시 함수 (수정됨) ---
+        function showMessage(message, type, areaId) {
+            const messageArea = document.getElementById(areaId);
+            if (messageArea) { // messageArea 요소를 찾았는지 확인
+                if (message) {
+                    messageArea.innerHTML = `<div class="message ${type}">${message}</div>`;
+                } else {
+                    messageArea.innerHTML = ''; // 메시지 내용이 없으면 영역을 비움
+                }
+            } else {
+                console.error("showMessage: Message area ID '" + areaId + "' not found in HTML.");
+            }
+        }
+
+        // --- 크롤러 관련 스크립트 ---
+        async function startCrawl() {
+            const url = document.getElementById('urlInput').value;
+            const elementTag = document.getElementById('tagInput').value;
+            const resultsArea = document.getElementById('resultsArea');
+            const resultsList = document.getElementById('resultsList');
+            const filePathMessage = document.getElementById('filePathMessage');
+            const loadingSpinner = document.getElementById('crawlLoadingSpinner');
+
+            resultsArea.style.display = 'none';
+            resultsList.innerHTML = '';
+            filePathMessage.textContent = '';
+            showMessage('', undefined, 'crawlerMessageArea'); // 메시지 초기화, type을 undefined로 전달 가능
+            loadingSpinner.style.display = 'inline-block';
+
+            if (!url || !elementTag) {
+                showMessage('URL과 추출할 HTML 태그(또는 CSS 선택자)를 모두 입력해주세요.', 'error', 'crawlerMessageArea');
+                loadingSpinner.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch('/crawl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, element_tag: elementTag }),
+                });
+                const result = await response.json();
+                loadingSpinner.style.display = 'none';
+
+                if (response.ok) {
+                    showMessage(result.message || '크롤링 완료!', 'success', 'crawlerMessageArea');
+                    if (result.data && result.data.length > 0) {
+                        resultsArea.style.display = 'block';
+                        result.data.forEach(item => {
+                            const li = document.createElement('li');
+                            let itemText = item.text;
+                            if (item.link) itemText += ` (링크: ${item.link})`;
+                            li.textContent = itemText;
+                            resultsList.appendChild(li);
+                        });
+                        if(result.filepath) filePathMessage.textContent = `전체 데이터는 서버의 다음 경로에 저장되었습니다: ${result.filepath}`;
+                    } else if (!result.error) {
+                         filePathMessage.textContent = result.message || "추출된 데이터가 없습니다.";
+                         resultsArea.style.display = 'block';
+                    }
+                } else {
+                    showMessage(result.error || '크롤링 중 오류가 발생했습니다.', 'error', 'crawlerMessageArea');
+                }
+            } catch (error) {
+                loadingSpinner.style.display = 'none';
+                showMessage('서버 통신 중 오류 발생: ' + error.toString(), 'error', 'crawlerMessageArea');
+            }
+        }
+
+        // --- 시각화 관련 스크립트 ---
+        async function loadCsvFiles() {
+            const csvFileSelect = document.getElementById('csvFileSelect');
+            try {
+                const response = await fetch('/api/csv_files');
+                const result = await response.json();
+                if (response.ok && result.csv_files) {
+                    csvFileSelect.innerHTML = '<option value="">-- CSV 파일 선택 --</option>'; 
+                    result.csv_files.forEach(file => {
+                        const option = document.createElement('option');
+                        option.value = file;
+                        option.textContent = file;
+                        csvFileSelect.appendChild(option);
+                    });
+                } else {
+                    showMessage(result.error || 'CSV 파일 목록을 불러오는데 실패했습니다.', 'error', 'vizMessageArea');
+                }
+            } catch (error) {
+                showMessage('CSV 파일 목록 로딩 중 오류: ' + error.toString(), 'error', 'vizMessageArea');
+            }
+        }
+
+        async function generateVisualization() {
+            const csvFile = document.getElementById('csvFileSelect').value;
+            const analysisType = document.getElementById('analysisTypeSelect').value;
+            const keywords = document.getElementById('keywordsInput').value;
+            const chartType = document.getElementById('chartTypeSelect').value;
+            const chartDiv = document.getElementById('chartDiv');
+            const loadingSpinner = document.getElementById('vizLoadingSpinner');
+
+            showMessage('', undefined, 'vizMessageArea'); 
+            chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">차트를 생성 중입니다...</p>';
+            loadingSpinner.style.display = 'inline-block';
+
+            if (!csvFile) {
+                showMessage('분석할 CSV 파일을 선택해주세요.', 'error', 'vizMessageArea');
+                loadingSpinner.style.display = 'none';
+                chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">차트가 여기에 표시됩니다.</p>';
+                return;
+            }
+
+            let payload = {
+                filename: csvFile,
+                analysis_type: analysisType,
+            };
+
+            if (analysisType === 'keyword_frequency') {
+                if (!keywords) {
+                    showMessage('키워드를 입력해주세요.', 'error', 'vizMessageArea');
+                    loadingSpinner.style.display = 'none';
+                    chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">차트가 여기에 표시됩니다.</p>';
+                    return;
+                }
+                payload.keywords = keywords;
+            }
+
+            try {
+                const response = await fetch('/api/visualize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                loadingSpinner.style.display = 'none';
+
+                if (response.ok) {
+                    if (result.x_values && result.y_values) {
+                        const plotData = [{
+                            x: result.x_values,
+                            y: result.y_values,
+                            type: chartType
+                        }];
+                        const layout = {
+                            title: result.title || '데이터 시각화',
+                            xaxis: { title: (analysisType === 'keyword_frequency' ? '키워드' : 'X축') },
+                            yaxis: { title: (analysisType === 'keyword_frequency' ? '빈도수' : 'Y축') },
+                            margin: { t: 50, b: 100, l:50, r:50 }
+                        };
+                        Plotly.newPlot('chartDiv', plotData, layout, {responsive: true});
+                        showMessage('차트 생성 완료!', 'success', 'vizMessageArea');
+                    } else {
+                         showMessage(result.message || '시각화할 데이터가 없습니다.', 'error', 'vizMessageArea');
+                         chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">시각화할 데이터가 없습니다.</p>';
+                    }
+                } else {
+                    showMessage(result.error || '시각화 데이터 생성 중 오류 발생.', 'error', 'vizMessageArea');
+                    chartDiv.innerHTML = `<p style="text-align:center; padding-top: 50px;">오류: ${result.error || '알 수 없는 오류'}</p>`;
+                }
+            } catch (error) {
+                loadingSpinner.style.display = 'none';
+                showMessage('시각화 요청 중 오류 발생: ' + error.toString(), 'error', 'vizMessageArea');
+                chartDiv.innerHTML = `<p style="text-align:center; padding-top: 50px;">요청 오류: ${error.toString()}</p>`;
+            }
+        }
+        
+        // 초기 탭 설정 (첫 번째 탭 활성화)
+        document.addEventListener("DOMContentLoaded", function() {
+            // 기본적으로 첫 번째 탭 버튼을 클릭한 것처럼 처리
+            // 하지만 active 클래스는 CSS에서 이미 첫 번째 버튼에 적용했을 수 있으므로,
+            // 여기서는 openTab 함수를 직접 호출하여 내용만 보이도록 할 수 있습니다.
+            // 또는, 첫 번째 버튼에 active 클래스가 이미 있다면, 해당 ID의 탭 내용만 보이게 합니다.
+            if(document.getElementsByClassName("tab-link")[0]){
+                 document.getElementsByClassName("tab-link")[0].click();
+            }
+        });
+
+    </script>
+</body>
+</html>
